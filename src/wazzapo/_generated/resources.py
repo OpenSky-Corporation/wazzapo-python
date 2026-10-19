@@ -105,10 +105,12 @@ class Contacts:
 
     def create(
         self,
-        *,
         body: ContactCreateIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ContactV2Out:
         """Создать контакт
 
@@ -124,9 +126,11 @@ class Contacts:
         POST /api/v2/external/contacts
 
         Аргументы:
-            body: тело запроса, словарь ContactCreateIn
+            body: тело запроса, словарь ContactCreateIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ContactV2Out",
@@ -136,10 +140,19 @@ class Contacts:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    def delete(self, contact_id: str, *, timeout: Optional[float] = None) -> None:
+    def delete(
+        self,
+        contact_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> None:
         """Удалить контакт
 
         Удаляет контакт мягко, как в кабинете: он пропадает из списка и поиска, переписка остаётся.
@@ -152,11 +165,26 @@ class Contacts:
         Аргументы:
             contact_id: id контакта: поле id из GET /contacts или из ответа POST /contacts, например 6712f0c4a1b2c3d4e5f60718
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        self._client._request("DELETE", f"/contacts/{_quote(contact_id)}", timeout=timeout)
+        self._client._request(
+            "DELETE",
+            f"/contacts/{_quote(contact_id)}",
+            timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
+        )
         return None
 
-    def get(self, contact_id: str, *, timeout: Optional[float] = None) -> ContactV2Out:
+    def get(
+        self,
+        contact_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> ContactV2Out:
         """Получить контакт
 
         Карточка одного контакта: номер, имя, метки, свои поля, источник (attribution).
@@ -169,6 +197,8 @@ class Contacts:
         Аргументы:
             contact_id: id контакта: поле id из GET /contacts или из ответа POST /contacts, например 6712f0c4a1b2c3d4e5f60718
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ContactV2Out",
@@ -176,6 +206,8 @@ class Contacts:
                 "GET",
                 f"/contacts/{_quote(contact_id)}",
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -189,6 +221,8 @@ class Contacts:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ContactListOut:
         """Список контактов
 
@@ -208,6 +242,8 @@ class Contacts:
             limit: Сколько контактов на странице, от 1 до 200
             cursor: next_cursor из прошлого ответа; без него первая страница
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ContactListOut",
@@ -216,6 +252,8 @@ class Contacts:
                 "/contacts",
                 params={"search": search, "tag": tag, "updated_since": updated_since, "external_id": external_id, "limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -228,6 +266,8 @@ class Contacts:
         external_id: Optional[str] = None,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> Iterator[ContactV2Out]:
         """Список контактов: все страницы подряд.
 
@@ -240,19 +280,25 @@ class Contacts:
             external_id: Только контакты с этим external_id (вашим id из своей CRM), например 1c-00042
             limit: Сколько контактов на странице, от 1 до 200
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return self._client._paginate(
             "/contacts",
             params={"search": search, "tag": tag, "updated_since": updated_since, "external_id": external_id, "limit": limit},
             timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
         )
 
     def update(
         self,
         contact_id: str,
-        *,
         body: ContactUpdateIn,
+        *,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ContactV2Out:
         """Изменить контакт
 
@@ -267,8 +313,10 @@ class Contacts:
 
         Аргументы:
             contact_id: id контакта: поле id из GET /contacts или из ответа POST /contacts, например 6712f0c4a1b2c3d4e5f60718
-            body: тело запроса, словарь ContactUpdateIn
+            body: тело запроса, словарь ContactUpdateIn (первым аргументом после id или body=)
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ContactV2Out",
@@ -277,6 +325,8 @@ class Contacts:
                 f"/contacts/{_quote(contact_id)}",
                 json=body,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -290,10 +340,12 @@ class AsyncContacts:
 
     async def create(
         self,
-        *,
         body: ContactCreateIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ContactV2Out:
         """Создать контакт
 
@@ -309,9 +361,11 @@ class AsyncContacts:
         POST /api/v2/external/contacts
 
         Аргументы:
-            body: тело запроса, словарь ContactCreateIn
+            body: тело запроса, словарь ContactCreateIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ContactV2Out",
@@ -321,10 +375,19 @@ class AsyncContacts:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    async def delete(self, contact_id: str, *, timeout: Optional[float] = None) -> None:
+    async def delete(
+        self,
+        contact_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> None:
         """Удалить контакт
 
         Удаляет контакт мягко, как в кабинете: он пропадает из списка и поиска, переписка остаётся.
@@ -337,11 +400,26 @@ class AsyncContacts:
         Аргументы:
             contact_id: id контакта: поле id из GET /contacts или из ответа POST /contacts, например 6712f0c4a1b2c3d4e5f60718
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        await self._client._request("DELETE", f"/contacts/{_quote(contact_id)}", timeout=timeout)
+        await self._client._request(
+            "DELETE",
+            f"/contacts/{_quote(contact_id)}",
+            timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
+        )
         return None
 
-    async def get(self, contact_id: str, *, timeout: Optional[float] = None) -> ContactV2Out:
+    async def get(
+        self,
+        contact_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> ContactV2Out:
         """Получить контакт
 
         Карточка одного контакта: номер, имя, метки, свои поля, источник (attribution).
@@ -354,6 +432,8 @@ class AsyncContacts:
         Аргументы:
             contact_id: id контакта: поле id из GET /contacts или из ответа POST /contacts, например 6712f0c4a1b2c3d4e5f60718
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ContactV2Out",
@@ -361,6 +441,8 @@ class AsyncContacts:
                 "GET",
                 f"/contacts/{_quote(contact_id)}",
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -374,6 +456,8 @@ class AsyncContacts:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ContactListOut:
         """Список контактов
 
@@ -393,6 +477,8 @@ class AsyncContacts:
             limit: Сколько контактов на странице, от 1 до 200
             cursor: next_cursor из прошлого ответа; без него первая страница
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ContactListOut",
@@ -401,6 +487,8 @@ class AsyncContacts:
                 "/contacts",
                 params={"search": search, "tag": tag, "updated_since": updated_since, "external_id": external_id, "limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -413,6 +501,8 @@ class AsyncContacts:
         external_id: Optional[str] = None,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> AsyncIterator[ContactV2Out]:
         """Список контактов: все страницы подряд.
 
@@ -425,19 +515,25 @@ class AsyncContacts:
             external_id: Только контакты с этим external_id (вашим id из своей CRM), например 1c-00042
             limit: Сколько контактов на странице, от 1 до 200
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return self._client._apaginate(
             "/contacts",
             params={"search": search, "tag": tag, "updated_since": updated_since, "external_id": external_id, "limit": limit},
             timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
         )
 
     async def update(
         self,
         contact_id: str,
-        *,
         body: ContactUpdateIn,
+        *,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ContactV2Out:
         """Изменить контакт
 
@@ -452,8 +548,10 @@ class AsyncContacts:
 
         Аргументы:
             contact_id: id контакта: поле id из GET /contacts или из ответа POST /contacts, например 6712f0c4a1b2c3d4e5f60718
-            body: тело запроса, словарь ContactUpdateIn
+            body: тело запроса, словарь ContactUpdateIn (первым аргументом после id или body=)
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ContactV2Out",
@@ -462,6 +560,8 @@ class AsyncContacts:
                 f"/contacts/{_quote(contact_id)}",
                 json=body,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -476,10 +576,12 @@ class Conversations:
     def add_note(
         self,
         conversation_id: str,
-        *,
         body: AddNoteIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ConversationMessageOut:
         """Добавить заметку
 
@@ -493,9 +595,11 @@ class Conversations:
 
         Аргументы:
             conversation_id: id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
-            body: тело запроса, словарь AddNoteIn
+            body: тело запроса, словарь AddNoteIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ConversationMessageOut",
@@ -505,16 +609,20 @@ class Conversations:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
     def assign(
         self,
         conversation_id: str,
-        *,
         body: AssignConversationIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ConversationItemOut:
         """Назначить ответственного
 
@@ -528,9 +636,11 @@ class Conversations:
 
         Аргументы:
             conversation_id: id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
-            body: тело запроса, словарь AssignConversationIn
+            body: тело запроса, словарь AssignConversationIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ConversationItemOut",
@@ -540,10 +650,19 @@ class Conversations:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    def get(self, conversation_id: str, *, timeout: Optional[float] = None) -> ConversationItemOut:
+    def get(
+        self,
+        conversation_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> ConversationItemOut:
         """Диалог
 
         Один диалог по id: контакт, канал, статус, ответственный, метки, непрочитанные и последнее сообщение. id берут из GET /conversations или из поля `conversation_id` вебхука `message.incoming`.
@@ -555,6 +674,8 @@ class Conversations:
         Аргументы:
             conversation_id: id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ConversationItemOut",
@@ -562,6 +683,8 @@ class Conversations:
                 "GET",
                 f"/conversations/{_quote(conversation_id)}",
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -577,6 +700,8 @@ class Conversations:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ConversationListOut:
         """Список диалогов
 
@@ -600,6 +725,8 @@ class Conversations:
             limit: Диалогов на странице, от 1 до 200
             cursor: next_cursor из прошлого ответа; без него первая страница
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ConversationListOut",
@@ -608,6 +735,8 @@ class Conversations:
                 "/conversations",
                 params={"phone_number_id": phone_number_id, "channel": channel, "status": status, "assignee_user_id": assignee_user_id, "unread": unread, "updated_since": updated_since, "limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -622,6 +751,8 @@ class Conversations:
         updated_since: Optional[str] = None,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> Iterator[ConversationItemOut]:
         """Список диалогов: все страницы подряд.
 
@@ -636,11 +767,15 @@ class Conversations:
             updated_since: Только диалоги, изменённые после этого момента, ISO 8601, например 2026-10-01T00:00:00Z. Для синхронизации: updated_at последнего диалога прошлой выгрузки
             limit: Диалогов на странице, от 1 до 200
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return self._client._paginate(
             "/conversations",
             params={"phone_number_id": phone_number_id, "channel": channel, "status": status, "assignee_user_id": assignee_user_id, "unread": unread, "updated_since": updated_since, "limit": limit},
             timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
         )
 
     def list_messages(
@@ -652,6 +787,8 @@ class Conversations:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ConversationMessageListOut:
         """Переписка диалога
 
@@ -670,6 +807,8 @@ class Conversations:
             limit: Сообщений на странице, от 1 до 200
             cursor: next_cursor из прошлого ответа; без него первая страница
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ConversationMessageListOut",
@@ -678,6 +817,8 @@ class Conversations:
                 f"/conversations/{_quote(conversation_id)}/messages",
                 params={"include_notes": include_notes, "since": since, "limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -689,6 +830,8 @@ class Conversations:
         since: Optional[str] = None,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> Iterator[ConversationMessageOut]:
         """Переписка диалога: все страницы подряд.
 
@@ -700,20 +843,26 @@ class Conversations:
             since: Только сообщения после этого времени, ISO 8601, например 2026-10-18T09:15:00Z: timestamp последнего полученного сообщения
             limit: Сообщений на странице, от 1 до 200
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return self._client._paginate(
             f"/conversations/{_quote(conversation_id)}/messages",
             params={"include_notes": include_notes, "since": since, "limit": limit},
             timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
         )
 
     def set_labels(
         self,
         conversation_id: str,
-        *,
         body: SetLabelsIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ConversationItemOut:
         """Задать метки диалога
 
@@ -725,9 +874,11 @@ class Conversations:
 
         Аргументы:
             conversation_id: id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
-            body: тело запроса, словарь SetLabelsIn
+            body: тело запроса, словарь SetLabelsIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ConversationItemOut",
@@ -737,16 +888,20 @@ class Conversations:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
     def set_status(
         self,
         conversation_id: str,
-        *,
         body: SetConversationStatusIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ConversationItemOut:
         """Сменить статус диалога
 
@@ -760,9 +915,11 @@ class Conversations:
 
         Аргументы:
             conversation_id: id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
-            body: тело запроса, словарь SetConversationStatusIn
+            body: тело запроса, словарь SetConversationStatusIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ConversationItemOut",
@@ -772,6 +929,8 @@ class Conversations:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -786,10 +945,12 @@ class AsyncConversations:
     async def add_note(
         self,
         conversation_id: str,
-        *,
         body: AddNoteIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ConversationMessageOut:
         """Добавить заметку
 
@@ -803,9 +964,11 @@ class AsyncConversations:
 
         Аргументы:
             conversation_id: id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
-            body: тело запроса, словарь AddNoteIn
+            body: тело запроса, словарь AddNoteIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ConversationMessageOut",
@@ -815,16 +978,20 @@ class AsyncConversations:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
     async def assign(
         self,
         conversation_id: str,
-        *,
         body: AssignConversationIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ConversationItemOut:
         """Назначить ответственного
 
@@ -838,9 +1005,11 @@ class AsyncConversations:
 
         Аргументы:
             conversation_id: id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
-            body: тело запроса, словарь AssignConversationIn
+            body: тело запроса, словарь AssignConversationIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ConversationItemOut",
@@ -850,10 +1019,19 @@ class AsyncConversations:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    async def get(self, conversation_id: str, *, timeout: Optional[float] = None) -> ConversationItemOut:
+    async def get(
+        self,
+        conversation_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> ConversationItemOut:
         """Диалог
 
         Один диалог по id: контакт, канал, статус, ответственный, метки, непрочитанные и последнее сообщение. id берут из GET /conversations или из поля `conversation_id` вебхука `message.incoming`.
@@ -865,6 +1043,8 @@ class AsyncConversations:
         Аргументы:
             conversation_id: id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ConversationItemOut",
@@ -872,6 +1052,8 @@ class AsyncConversations:
                 "GET",
                 f"/conversations/{_quote(conversation_id)}",
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -887,6 +1069,8 @@ class AsyncConversations:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ConversationListOut:
         """Список диалогов
 
@@ -910,6 +1094,8 @@ class AsyncConversations:
             limit: Диалогов на странице, от 1 до 200
             cursor: next_cursor из прошлого ответа; без него первая страница
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ConversationListOut",
@@ -918,6 +1104,8 @@ class AsyncConversations:
                 "/conversations",
                 params={"phone_number_id": phone_number_id, "channel": channel, "status": status, "assignee_user_id": assignee_user_id, "unread": unread, "updated_since": updated_since, "limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -932,6 +1120,8 @@ class AsyncConversations:
         updated_since: Optional[str] = None,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> AsyncIterator[ConversationItemOut]:
         """Список диалогов: все страницы подряд.
 
@@ -946,11 +1136,15 @@ class AsyncConversations:
             updated_since: Только диалоги, изменённые после этого момента, ISO 8601, например 2026-10-01T00:00:00Z. Для синхронизации: updated_at последнего диалога прошлой выгрузки
             limit: Диалогов на странице, от 1 до 200
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return self._client._apaginate(
             "/conversations",
             params={"phone_number_id": phone_number_id, "channel": channel, "status": status, "assignee_user_id": assignee_user_id, "unread": unread, "updated_since": updated_since, "limit": limit},
             timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
         )
 
     async def list_messages(
@@ -962,6 +1156,8 @@ class AsyncConversations:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ConversationMessageListOut:
         """Переписка диалога
 
@@ -980,6 +1176,8 @@ class AsyncConversations:
             limit: Сообщений на странице, от 1 до 200
             cursor: next_cursor из прошлого ответа; без него первая страница
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ConversationMessageListOut",
@@ -988,6 +1186,8 @@ class AsyncConversations:
                 f"/conversations/{_quote(conversation_id)}/messages",
                 params={"include_notes": include_notes, "since": since, "limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -999,6 +1199,8 @@ class AsyncConversations:
         since: Optional[str] = None,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> AsyncIterator[ConversationMessageOut]:
         """Переписка диалога: все страницы подряд.
 
@@ -1010,20 +1212,26 @@ class AsyncConversations:
             since: Только сообщения после этого времени, ISO 8601, например 2026-10-18T09:15:00Z: timestamp последнего полученного сообщения
             limit: Сообщений на странице, от 1 до 200
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return self._client._apaginate(
             f"/conversations/{_quote(conversation_id)}/messages",
             params={"include_notes": include_notes, "since": since, "limit": limit},
             timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
         )
 
     async def set_labels(
         self,
         conversation_id: str,
-        *,
         body: SetLabelsIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ConversationItemOut:
         """Задать метки диалога
 
@@ -1035,9 +1243,11 @@ class AsyncConversations:
 
         Аргументы:
             conversation_id: id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
-            body: тело запроса, словарь SetLabelsIn
+            body: тело запроса, словарь SetLabelsIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ConversationItemOut",
@@ -1047,16 +1257,20 @@ class AsyncConversations:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
     async def set_status(
         self,
         conversation_id: str,
-        *,
         body: SetConversationStatusIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ConversationItemOut:
         """Сменить статус диалога
 
@@ -1070,9 +1284,11 @@ class AsyncConversations:
 
         Аргументы:
             conversation_id: id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
-            body: тело запроса, словарь SetConversationStatusIn
+            body: тело запроса, словарь SetConversationStatusIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ConversationItemOut",
@@ -1082,6 +1298,8 @@ class AsyncConversations:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -1095,10 +1313,12 @@ class Deals:
 
     def create(
         self,
-        *,
         body: DealCreateIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> DealOut:
         """Создать сделку
 
@@ -1125,9 +1345,11 @@ class Deals:
         POST /api/v2/external/deals
 
         Аргументы:
-            body: тело запроса, словарь DealCreateIn
+            body: тело запроса, словарь DealCreateIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "DealOut",
@@ -1137,10 +1359,19 @@ class Deals:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    def get(self, deal_id: str, *, timeout: Optional[float] = None) -> DealOut:
+    def get(
+        self,
+        deal_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> DealOut:
         """Сделка
 
         Одна сделка: этап, сумма в тиынах, клиент, ответственный, свои поля.
@@ -1153,8 +1384,19 @@ class Deals:
         Аргументы:
             deal_id: id сделки: поле id из GET /deals или из ответа POST /deals, например 6713b1d5f2c3d4e5f6071829
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        return cast("DealOut", self._client._request("GET", f"/deals/{_quote(deal_id)}", timeout=timeout))
+        return cast(
+            "DealOut",
+            self._client._request(
+                "GET",
+                f"/deals/{_quote(deal_id)}",
+                timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
+            ),
+        )
 
     def list(
         self,
@@ -1167,6 +1409,8 @@ class Deals:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> DealListOut:
         """Список сделок
 
@@ -1188,6 +1432,8 @@ class Deals:
             limit: Сколько сделок на странице, от 1 до 200, по умолчанию 50
             cursor: next_cursor из прошлого ответа; для первой страницы не передавайте
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "DealListOut",
@@ -1196,6 +1442,8 @@ class Deals:
                 "/deals",
                 params={"pipeline_id": pipeline_id, "stage_id": stage_id, "contact_id": contact_id, "external_id": external_id, "updated_since": updated_since, "limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -1209,6 +1457,8 @@ class Deals:
         updated_since: Optional[str] = None,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> Iterator[DealOut]:
         """Список сделок: все страницы подряд.
 
@@ -1222,20 +1472,26 @@ class Deals:
             updated_since: Только изменённые начиная с этого времени, ISO 8601, например 2026-10-18T00:00:00Z
             limit: Сколько сделок на странице, от 1 до 200, по умолчанию 50
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return self._client._paginate(
             "/deals",
             params={"pipeline_id": pipeline_id, "stage_id": stage_id, "contact_id": contact_id, "external_id": external_id, "updated_since": updated_since, "limit": limit},
             timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
         )
 
     def move(
         self,
         deal_id: str,
-        *,
         body: DealMoveIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> DealOut:
         """Перенести сделку на этап
 
@@ -1255,9 +1511,11 @@ class Deals:
 
         Аргументы:
             deal_id: id сделки: поле id из GET /deals или из ответа POST /deals, например 6713b1d5f2c3d4e5f6071829
-            body: тело запроса, словарь DealMoveIn
+            body: тело запроса, словарь DealMoveIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "DealOut",
@@ -1267,10 +1525,20 @@ class Deals:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    def update(self, deal_id: str, *, body: DealUpdateIn, timeout: Optional[float] = None) -> DealOut:
+    def update(
+        self,
+        deal_id: str,
+        body: DealUpdateIn,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> DealOut:
         """Изменить сделку
 
         Меняет название, сумму, ответственного, свои поля и external_id сделки.
@@ -1289,8 +1557,10 @@ class Deals:
 
         Аргументы:
             deal_id: id сделки: поле id из GET /deals или из ответа POST /deals, например 6713b1d5f2c3d4e5f6071829
-            body: тело запроса, словарь DealUpdateIn
+            body: тело запроса, словарь DealUpdateIn (первым аргументом после id или body=)
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "DealOut",
@@ -1299,6 +1569,8 @@ class Deals:
                 f"/deals/{_quote(deal_id)}",
                 json=body,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -1312,10 +1584,12 @@ class AsyncDeals:
 
     async def create(
         self,
-        *,
         body: DealCreateIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> DealOut:
         """Создать сделку
 
@@ -1342,9 +1616,11 @@ class AsyncDeals:
         POST /api/v2/external/deals
 
         Аргументы:
-            body: тело запроса, словарь DealCreateIn
+            body: тело запроса, словарь DealCreateIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "DealOut",
@@ -1354,10 +1630,19 @@ class AsyncDeals:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    async def get(self, deal_id: str, *, timeout: Optional[float] = None) -> DealOut:
+    async def get(
+        self,
+        deal_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> DealOut:
         """Сделка
 
         Одна сделка: этап, сумма в тиынах, клиент, ответственный, свои поля.
@@ -1370,6 +1655,8 @@ class AsyncDeals:
         Аргументы:
             deal_id: id сделки: поле id из GET /deals или из ответа POST /deals, например 6713b1d5f2c3d4e5f6071829
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "DealOut",
@@ -1377,6 +1664,8 @@ class AsyncDeals:
                 "GET",
                 f"/deals/{_quote(deal_id)}",
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -1391,6 +1680,8 @@ class AsyncDeals:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> DealListOut:
         """Список сделок
 
@@ -1412,6 +1703,8 @@ class AsyncDeals:
             limit: Сколько сделок на странице, от 1 до 200, по умолчанию 50
             cursor: next_cursor из прошлого ответа; для первой страницы не передавайте
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "DealListOut",
@@ -1420,6 +1713,8 @@ class AsyncDeals:
                 "/deals",
                 params={"pipeline_id": pipeline_id, "stage_id": stage_id, "contact_id": contact_id, "external_id": external_id, "updated_since": updated_since, "limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -1433,6 +1728,8 @@ class AsyncDeals:
         updated_since: Optional[str] = None,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> AsyncIterator[DealOut]:
         """Список сделок: все страницы подряд.
 
@@ -1446,20 +1743,26 @@ class AsyncDeals:
             updated_since: Только изменённые начиная с этого времени, ISO 8601, например 2026-10-18T00:00:00Z
             limit: Сколько сделок на странице, от 1 до 200, по умолчанию 50
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return self._client._apaginate(
             "/deals",
             params={"pipeline_id": pipeline_id, "stage_id": stage_id, "contact_id": contact_id, "external_id": external_id, "updated_since": updated_since, "limit": limit},
             timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
         )
 
     async def move(
         self,
         deal_id: str,
-        *,
         body: DealMoveIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> DealOut:
         """Перенести сделку на этап
 
@@ -1479,9 +1782,11 @@ class AsyncDeals:
 
         Аргументы:
             deal_id: id сделки: поле id из GET /deals или из ответа POST /deals, например 6713b1d5f2c3d4e5f6071829
-            body: тело запроса, словарь DealMoveIn
+            body: тело запроса, словарь DealMoveIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "DealOut",
@@ -1491,10 +1796,20 @@ class AsyncDeals:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    async def update(self, deal_id: str, *, body: DealUpdateIn, timeout: Optional[float] = None) -> DealOut:
+    async def update(
+        self,
+        deal_id: str,
+        body: DealUpdateIn,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> DealOut:
         """Изменить сделку
 
         Меняет название, сумму, ответственного, свои поля и external_id сделки.
@@ -1513,8 +1828,10 @@ class AsyncDeals:
 
         Аргументы:
             deal_id: id сделки: поле id из GET /deals или из ответа POST /deals, например 6713b1d5f2c3d4e5f6071829
-            body: тело запроса, словарь DealUpdateIn
+            body: тело запроса, словарь DealUpdateIn (первым аргументом после id или body=)
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "DealOut",
@@ -1523,6 +1840,8 @@ class AsyncDeals:
                 f"/deals/{_quote(deal_id)}",
                 json=body,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -1534,14 +1853,24 @@ class Media:
     def __init__(self, client: "Wazzapo") -> None:
         self._client = client
 
-    def download(self, media_id: str, *, phone_number_id: str, timeout: Optional[float] = None) -> bytes:
+    def download(
+        self,
+        media_id: str,
+        *,
+        phone_number_id: str,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> bytes:
         """Скачать файл
 
         Скачивает файл по media_id: тело ответа сам файл, тип в заголовке Content-Type.
 
         Так забирают фото, голосовые и документы, которые прислал клиент. Сохраните файл у себя:
-        Meta хранит его ограниченное время. Ошибки: 400 BAD_REQUEST (номер не через Cloud API),
-        502 provider_error (файл удалён в Meta или сбой).
+        Meta хранит его ограниченное время. Ошибки: 404 phone_number_not_found или NOT_FOUND (номер не
+        найден; файла с таким id нет в Meta: удалён, срок хранения вышел или id неверный; id sandbox_…
+        от тестового ключа, такие файлы не хранятся), 400 BAD_REQUEST (номер не через Cloud API),
+        502 provider_error (сбой Meta, повторите позже).
 
         GET /api/v2/external/media/{media_id}
 
@@ -1549,6 +1878,8 @@ class Media:
             media_id: id файла: media.id из входящего сообщения (вебхук message.incoming) или из POST /media
             phone_number_id: id номера: phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "bytes",
@@ -1557,6 +1888,8 @@ class Media:
                 f"/media/{_quote(media_id)}",
                 params={"phone_number_id": phone_number_id},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
                 raw=True,
             ),
         )
@@ -1570,6 +1903,8 @@ class Media:
         phone_number_id: str,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> MediaUploadOut:
         """Загрузить файл
 
@@ -1590,6 +1925,8 @@ class Media:
             phone_number_id: id номера: phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "MediaUploadOut",
@@ -1600,6 +1937,8 @@ class Media:
                 files=_file_part(file, filename, content_type),
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -1617,14 +1956,18 @@ class AsyncMedia:
         *,
         phone_number_id: str,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> bytes:
         """Скачать файл
 
         Скачивает файл по media_id: тело ответа сам файл, тип в заголовке Content-Type.
 
         Так забирают фото, голосовые и документы, которые прислал клиент. Сохраните файл у себя:
-        Meta хранит его ограниченное время. Ошибки: 400 BAD_REQUEST (номер не через Cloud API),
-        502 provider_error (файл удалён в Meta или сбой).
+        Meta хранит его ограниченное время. Ошибки: 404 phone_number_not_found или NOT_FOUND (номер не
+        найден; файла с таким id нет в Meta: удалён, срок хранения вышел или id неверный; id sandbox_…
+        от тестового ключа, такие файлы не хранятся), 400 BAD_REQUEST (номер не через Cloud API),
+        502 provider_error (сбой Meta, повторите позже).
 
         GET /api/v2/external/media/{media_id}
 
@@ -1632,6 +1975,8 @@ class AsyncMedia:
             media_id: id файла: media.id из входящего сообщения (вебхук message.incoming) или из POST /media
             phone_number_id: id номера: phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "bytes",
@@ -1640,6 +1985,8 @@ class AsyncMedia:
                 f"/media/{_quote(media_id)}",
                 params={"phone_number_id": phone_number_id},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
                 raw=True,
             ),
         )
@@ -1653,6 +2000,8 @@ class AsyncMedia:
         phone_number_id: str,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> MediaUploadOut:
         """Загрузить файл
 
@@ -1673,6 +2022,8 @@ class AsyncMedia:
             phone_number_id: id номера: phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "MediaUploadOut",
@@ -1683,6 +2034,8 @@ class AsyncMedia:
                 files=_file_part(file, filename, content_type),
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -1696,10 +2049,12 @@ class Messages:
 
     def mark_read(
         self,
-        *,
         body: MarkReadIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> SuccessOut:
         """Отметить прочитанными
 
@@ -1712,9 +2067,11 @@ class Messages:
         POST /api/v2/external/messages/mark-read
 
         Аргументы:
-            body: тело запроса, словарь MarkReadIn
+            body: тело запроса, словарь MarkReadIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "SuccessOut",
@@ -1724,15 +2081,19 @@ class Messages:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
     def react(
         self,
-        *,
         body: ReactionIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ReactionOut:
         """Поставить реакцию
 
@@ -1744,9 +2105,11 @@ class Messages:
         POST /api/v2/external/messages/reaction
 
         Аргументы:
-            body: тело запроса, словарь ReactionIn
+            body: тело запроса, словарь ReactionIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ReactionOut",
@@ -1756,15 +2119,19 @@ class Messages:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
     def send(
         self,
-        *,
         body: SendMessageIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> SendMessageOut:
         """Отправить сообщение
 
@@ -1791,9 +2158,11 @@ class Messages:
         POST /api/v2/external/messages/send
 
         Аргументы:
-            body: тело запроса, словарь SendMessageIn
+            body: тело запроса, словарь SendMessageIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "SendMessageOut",
@@ -1803,6 +2172,8 @@ class Messages:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -1816,10 +2187,12 @@ class AsyncMessages:
 
     async def mark_read(
         self,
-        *,
         body: MarkReadIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> SuccessOut:
         """Отметить прочитанными
 
@@ -1832,9 +2205,11 @@ class AsyncMessages:
         POST /api/v2/external/messages/mark-read
 
         Аргументы:
-            body: тело запроса, словарь MarkReadIn
+            body: тело запроса, словарь MarkReadIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "SuccessOut",
@@ -1844,15 +2219,19 @@ class AsyncMessages:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
     async def react(
         self,
-        *,
         body: ReactionIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> ReactionOut:
         """Поставить реакцию
 
@@ -1864,9 +2243,11 @@ class AsyncMessages:
         POST /api/v2/external/messages/reaction
 
         Аргументы:
-            body: тело запроса, словарь ReactionIn
+            body: тело запроса, словарь ReactionIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "ReactionOut",
@@ -1876,15 +2257,19 @@ class AsyncMessages:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
     async def send(
         self,
-        *,
         body: SendMessageIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> SendMessageOut:
         """Отправить сообщение
 
@@ -1911,9 +2296,11 @@ class AsyncMessages:
         POST /api/v2/external/messages/send
 
         Аргументы:
-            body: тело запроса, словарь SendMessageIn
+            body: тело запроса, словарь SendMessageIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "SendMessageOut",
@@ -1923,6 +2310,8 @@ class AsyncMessages:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -1936,10 +2325,12 @@ class PhoneNumbers:
 
     def create(
         self,
-        *,
         body: RegisterPhoneNumberIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> RegisterPhoneNumberOut:
         """Подключить номер
 
@@ -1954,9 +2345,11 @@ class PhoneNumbers:
         POST /api/v2/external/phone-numbers
 
         Аргументы:
-            body: тело запроса, словарь RegisterPhoneNumberIn
+            body: тело запроса, словарь RegisterPhoneNumberIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "RegisterPhoneNumberOut",
@@ -1966,10 +2359,19 @@ class PhoneNumbers:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    def delete(self, phone_number_id: str, *, timeout: Optional[float] = None) -> None:
+    def delete(
+        self,
+        phone_number_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> None:
         """Отключить номер
 
         Отключает номер от Wazzapo: сообщения с него больше не отправляются и не приходят.
@@ -1982,11 +2384,26 @@ class PhoneNumbers:
         Аргументы:
             phone_number_id: id номера: поле phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        self._client._request("DELETE", f"/phone-numbers/{_quote(phone_number_id)}", timeout=timeout)
+        self._client._request(
+            "DELETE",
+            f"/phone-numbers/{_quote(phone_number_id)}",
+            timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
+        )
         return None
 
-    def get(self, phone_number_id: str, *, timeout: Optional[float] = None) -> PhoneNumberOut:
+    def get(
+        self,
+        phone_number_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> PhoneNumberOut:
         """Номер
 
         Возвращает один номер: статус подключения, имя компании, оценку качества Meta.
@@ -1999,6 +2416,8 @@ class PhoneNumbers:
         Аргументы:
             phone_number_id: id номера: поле phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "PhoneNumberOut",
@@ -2006,6 +2425,8 @@ class PhoneNumbers:
                 "GET",
                 f"/phone-numbers/{_quote(phone_number_id)}",
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2014,6 +2435,8 @@ class PhoneNumbers:
         phone_number_id: str,
         *,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> BusinessProfileOut:
         """Профиль компании
 
@@ -2027,6 +2450,8 @@ class PhoneNumbers:
         Аргументы:
             phone_number_id: id номера: поле phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "BusinessProfileOut",
@@ -2034,31 +2459,56 @@ class PhoneNumbers:
                 "GET",
                 f"/phone-numbers/{_quote(phone_number_id)}/business-profile",
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    def list(self, *, timeout: Optional[float] = None) -> PhoneNumberListOut:
+    def list(
+        self,
+        *,
+        channel: Optional[Literal['whatsapp', 'telegram', 'instagram', 'olx', 'satu', 'email', 'webchat']] = None,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> PhoneNumberListOut:
         """Список номеров
 
-        Возвращает номера WhatsApp, подключённые к аккаунту ключа.
+        Возвращает номера WhatsApp и другие каналы, подключённые к аккаунту ключа.
 
         С этого метода начинают: phone_number_id из ответа нужен для отправки сообщений,
-        загрузки файлов и шаблонов. Номер подключают в кабинете Wazzapo
+        загрузки файлов и шаблонов. Номера WhatsApp идут первыми, за ними остальные каналы
+        (поле channel); только WhatsApp: ?channel=whatsapp. Номер подключают в кабинете Wazzapo
         или методом POST /phone-numbers. Отключённые номера в списке не показываются.
 
         GET /api/v2/external/phone-numbers
 
         Аргументы:
+            channel: Только этот канал: whatsapp, telegram, instagram, olx, satu, email, webchat. Для отправки сообщений и шаблонов нужен whatsapp
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        return cast("PhoneNumberListOut", self._client._request("GET", "/phone-numbers", timeout=timeout))
+        return cast(
+            "PhoneNumberListOut",
+            self._client._request(
+                "GET",
+                "/phone-numbers",
+                params={"channel": channel},
+                timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
+            ),
+        )
 
     def update_business_profile(
         self,
         phone_number_id: str,
-        *,
         body: BusinessProfileIn,
+        *,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> BusinessProfileUpdateOut:
         """Изменить профиль компании
 
@@ -2072,8 +2522,10 @@ class PhoneNumbers:
 
         Аргументы:
             phone_number_id: id номера: поле phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
-            body: тело запроса, словарь BusinessProfileIn
+            body: тело запроса, словарь BusinessProfileIn (первым аргументом после id или body=)
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "BusinessProfileUpdateOut",
@@ -2082,6 +2534,8 @@ class PhoneNumbers:
                 f"/phone-numbers/{_quote(phone_number_id)}/business-profile",
                 json=body,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2095,10 +2549,12 @@ class AsyncPhoneNumbers:
 
     async def create(
         self,
-        *,
         body: RegisterPhoneNumberIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> RegisterPhoneNumberOut:
         """Подключить номер
 
@@ -2113,9 +2569,11 @@ class AsyncPhoneNumbers:
         POST /api/v2/external/phone-numbers
 
         Аргументы:
-            body: тело запроса, словарь RegisterPhoneNumberIn
+            body: тело запроса, словарь RegisterPhoneNumberIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "RegisterPhoneNumberOut",
@@ -2125,10 +2583,19 @@ class AsyncPhoneNumbers:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    async def delete(self, phone_number_id: str, *, timeout: Optional[float] = None) -> None:
+    async def delete(
+        self,
+        phone_number_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> None:
         """Отключить номер
 
         Отключает номер от Wazzapo: сообщения с него больше не отправляются и не приходят.
@@ -2141,11 +2608,26 @@ class AsyncPhoneNumbers:
         Аргументы:
             phone_number_id: id номера: поле phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        await self._client._request("DELETE", f"/phone-numbers/{_quote(phone_number_id)}", timeout=timeout)
+        await self._client._request(
+            "DELETE",
+            f"/phone-numbers/{_quote(phone_number_id)}",
+            timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
+        )
         return None
 
-    async def get(self, phone_number_id: str, *, timeout: Optional[float] = None) -> PhoneNumberOut:
+    async def get(
+        self,
+        phone_number_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> PhoneNumberOut:
         """Номер
 
         Возвращает один номер: статус подключения, имя компании, оценку качества Meta.
@@ -2158,6 +2640,8 @@ class AsyncPhoneNumbers:
         Аргументы:
             phone_number_id: id номера: поле phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "PhoneNumberOut",
@@ -2165,6 +2649,8 @@ class AsyncPhoneNumbers:
                 "GET",
                 f"/phone-numbers/{_quote(phone_number_id)}",
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2173,6 +2659,8 @@ class AsyncPhoneNumbers:
         phone_number_id: str,
         *,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> BusinessProfileOut:
         """Профиль компании
 
@@ -2186,6 +2674,8 @@ class AsyncPhoneNumbers:
         Аргументы:
             phone_number_id: id номера: поле phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "BusinessProfileOut",
@@ -2193,38 +2683,56 @@ class AsyncPhoneNumbers:
                 "GET",
                 f"/phone-numbers/{_quote(phone_number_id)}/business-profile",
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    async def list(self, *, timeout: Optional[float] = None) -> PhoneNumberListOut:
+    async def list(
+        self,
+        *,
+        channel: Optional[Literal['whatsapp', 'telegram', 'instagram', 'olx', 'satu', 'email', 'webchat']] = None,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> PhoneNumberListOut:
         """Список номеров
 
-        Возвращает номера WhatsApp, подключённые к аккаунту ключа.
+        Возвращает номера WhatsApp и другие каналы, подключённые к аккаунту ключа.
 
         С этого метода начинают: phone_number_id из ответа нужен для отправки сообщений,
-        загрузки файлов и шаблонов. Номер подключают в кабинете Wazzapo
+        загрузки файлов и шаблонов. Номера WhatsApp идут первыми, за ними остальные каналы
+        (поле channel); только WhatsApp: ?channel=whatsapp. Номер подключают в кабинете Wazzapo
         или методом POST /phone-numbers. Отключённые номера в списке не показываются.
 
         GET /api/v2/external/phone-numbers
 
         Аргументы:
+            channel: Только этот канал: whatsapp, telegram, instagram, olx, satu, email, webchat. Для отправки сообщений и шаблонов нужен whatsapp
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "PhoneNumberListOut",
             await self._client._request(
                 "GET",
                 "/phone-numbers",
+                params={"channel": channel},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
     async def update_business_profile(
         self,
         phone_number_id: str,
-        *,
         body: BusinessProfileIn,
+        *,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> BusinessProfileUpdateOut:
         """Изменить профиль компании
 
@@ -2238,8 +2746,10 @@ class AsyncPhoneNumbers:
 
         Аргументы:
             phone_number_id: id номера: поле phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
-            body: тело запроса, словарь BusinessProfileIn
+            body: тело запроса, словарь BusinessProfileIn (первым аргументом после id или body=)
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "BusinessProfileUpdateOut",
@@ -2248,6 +2758,8 @@ class AsyncPhoneNumbers:
                 f"/phone-numbers/{_quote(phone_number_id)}/business-profile",
                 json=body,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2265,6 +2777,8 @@ class Pipelines:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> PipelineListOut:
         """Список воронок
 
@@ -2282,6 +2796,8 @@ class Pipelines:
             limit: Сколько воронок на странице, от 1 до 200, по умолчанию 50
             cursor: next_cursor из прошлого ответа; для первой страницы не передавайте
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "PipelineListOut",
@@ -2290,6 +2806,8 @@ class Pipelines:
                 "/pipelines",
                 params={"limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2298,6 +2816,8 @@ class Pipelines:
         *,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> Iterator[PipelineOut]:
         """Список воронок: все страницы подряд.
 
@@ -2306,8 +2826,16 @@ class Pipelines:
         Аргументы:
             limit: Сколько воронок на странице, от 1 до 200, по умолчанию 50
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        return self._client._paginate("/pipelines", params={"limit": limit}, timeout=timeout)
+        return self._client._paginate(
+            "/pipelines",
+            params={"limit": limit},
+            timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
+        )
 
 
 
@@ -2323,6 +2851,8 @@ class AsyncPipelines:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> PipelineListOut:
         """Список воронок
 
@@ -2340,6 +2870,8 @@ class AsyncPipelines:
             limit: Сколько воронок на странице, от 1 до 200, по умолчанию 50
             cursor: next_cursor из прошлого ответа; для первой страницы не передавайте
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "PipelineListOut",
@@ -2348,6 +2880,8 @@ class AsyncPipelines:
                 "/pipelines",
                 params={"limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2356,6 +2890,8 @@ class AsyncPipelines:
         *,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> AsyncIterator[PipelineOut]:
         """Список воронок: все страницы подряд.
 
@@ -2364,8 +2900,16 @@ class AsyncPipelines:
         Аргументы:
             limit: Сколько воронок на странице, от 1 до 200, по умолчанию 50
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        return self._client._apaginate("/pipelines", params={"limit": limit}, timeout=timeout)
+        return self._client._apaginate(
+            "/pipelines",
+            params={"limit": limit},
+            timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
+        )
 
 
 
@@ -2378,10 +2922,12 @@ class Tasks:
     def create(
         self,
         deal_id: str,
-        *,
         body: TaskCreateIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> TaskOut:
         """Поставить задачу по сделке
 
@@ -2397,9 +2943,11 @@ class Tasks:
 
         Аргументы:
             deal_id: id сделки: поле id из GET /deals или из ответа POST /deals, например 6713b1d5f2c3d4e5f6071829
-            body: тело запроса, словарь TaskCreateIn
+            body: тело запроса, словарь TaskCreateIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TaskOut",
@@ -2409,6 +2957,8 @@ class Tasks:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2419,6 +2969,8 @@ class Tasks:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> TaskListOut:
         """Задачи сделки
 
@@ -2434,6 +2986,8 @@ class Tasks:
             limit: Сколько задач на странице, от 1 до 200, по умолчанию 50
             cursor: next_cursor из прошлого ответа; для первой страницы не передавайте
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TaskListOut",
@@ -2442,6 +2996,8 @@ class Tasks:
                 f"/deals/{_quote(deal_id)}/tasks",
                 params={"limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2451,6 +3007,8 @@ class Tasks:
         *,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> Iterator[TaskOut]:
         """Задачи сделки: все страницы подряд.
 
@@ -2460,14 +3018,26 @@ class Tasks:
             deal_id: id сделки: поле id из GET /deals или из ответа POST /deals, например 6713b1d5f2c3d4e5f6071829
             limit: Сколько задач на странице, от 1 до 200, по умолчанию 50
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return self._client._paginate(
             f"/deals/{_quote(deal_id)}/tasks",
             params={"limit": limit},
             timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
         )
 
-    def update(self, task_id: str, *, body: TaskUpdateIn, timeout: Optional[float] = None) -> TaskOut:
+    def update(
+        self,
+        task_id: str,
+        body: TaskUpdateIn,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> TaskOut:
         """Изменить задачу
 
         Меняет название, срок или исполнителя задачи, отмечает её выполненной.
@@ -2480,8 +3050,10 @@ class Tasks:
 
         Аргументы:
             task_id: id задачи: поле id из GET /deals/{deal_id}/tasks или из ответа POST /deals/{deal_id}/tasks
-            body: тело запроса, словарь TaskUpdateIn
+            body: тело запроса, словарь TaskUpdateIn (первым аргументом после id или body=)
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TaskOut",
@@ -2490,6 +3062,8 @@ class Tasks:
                 f"/tasks/{_quote(task_id)}",
                 json=body,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2504,10 +3078,12 @@ class AsyncTasks:
     async def create(
         self,
         deal_id: str,
-        *,
         body: TaskCreateIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> TaskOut:
         """Поставить задачу по сделке
 
@@ -2523,9 +3099,11 @@ class AsyncTasks:
 
         Аргументы:
             deal_id: id сделки: поле id из GET /deals или из ответа POST /deals, например 6713b1d5f2c3d4e5f6071829
-            body: тело запроса, словарь TaskCreateIn
+            body: тело запроса, словарь TaskCreateIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TaskOut",
@@ -2535,6 +3113,8 @@ class AsyncTasks:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2545,6 +3125,8 @@ class AsyncTasks:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> TaskListOut:
         """Задачи сделки
 
@@ -2560,6 +3142,8 @@ class AsyncTasks:
             limit: Сколько задач на странице, от 1 до 200, по умолчанию 50
             cursor: next_cursor из прошлого ответа; для первой страницы не передавайте
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TaskListOut",
@@ -2568,6 +3152,8 @@ class AsyncTasks:
                 f"/deals/{_quote(deal_id)}/tasks",
                 params={"limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2577,6 +3163,8 @@ class AsyncTasks:
         *,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> AsyncIterator[TaskOut]:
         """Задачи сделки: все страницы подряд.
 
@@ -2586,14 +3174,26 @@ class AsyncTasks:
             deal_id: id сделки: поле id из GET /deals или из ответа POST /deals, например 6713b1d5f2c3d4e5f6071829
             limit: Сколько задач на странице, от 1 до 200, по умолчанию 50
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return self._client._apaginate(
             f"/deals/{_quote(deal_id)}/tasks",
             params={"limit": limit},
             timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
         )
 
-    async def update(self, task_id: str, *, body: TaskUpdateIn, timeout: Optional[float] = None) -> TaskOut:
+    async def update(
+        self,
+        task_id: str,
+        body: TaskUpdateIn,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> TaskOut:
         """Изменить задачу
 
         Меняет название, срок или исполнителя задачи, отмечает её выполненной.
@@ -2606,8 +3206,10 @@ class AsyncTasks:
 
         Аргументы:
             task_id: id задачи: поле id из GET /deals/{deal_id}/tasks или из ответа POST /deals/{deal_id}/tasks
-            body: тело запроса, словарь TaskUpdateIn
+            body: тело запроса, словарь TaskUpdateIn (первым аргументом после id или body=)
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TaskOut",
@@ -2616,6 +3218,8 @@ class AsyncTasks:
                 f"/tasks/{_quote(task_id)}",
                 json=body,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2633,6 +3237,8 @@ class Team:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> TeamListOut:
         """Сотрудники
 
@@ -2646,6 +3252,8 @@ class Team:
             limit: Сотрудников на странице, от 1 до 200
             cursor: next_cursor из прошлого ответа; без него первая страница
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TeamListOut",
@@ -2654,6 +3262,8 @@ class Team:
                 "/team",
                 params={"limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2662,6 +3272,8 @@ class Team:
         *,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> Iterator[TeamMemberOut]:
         """Сотрудники: все страницы подряд.
 
@@ -2670,8 +3282,16 @@ class Team:
         Аргументы:
             limit: Сотрудников на странице, от 1 до 200
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        return self._client._paginate("/team", params={"limit": limit}, timeout=timeout)
+        return self._client._paginate(
+            "/team",
+            params={"limit": limit},
+            timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
+        )
 
 
 
@@ -2687,6 +3307,8 @@ class AsyncTeam:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> TeamListOut:
         """Сотрудники
 
@@ -2700,6 +3322,8 @@ class AsyncTeam:
             limit: Сотрудников на странице, от 1 до 200
             cursor: next_cursor из прошлого ответа; без него первая страница
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TeamListOut",
@@ -2708,6 +3332,8 @@ class AsyncTeam:
                 "/team",
                 params={"limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2716,6 +3342,8 @@ class AsyncTeam:
         *,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> AsyncIterator[TeamMemberOut]:
         """Сотрудники: все страницы подряд.
 
@@ -2724,8 +3352,16 @@ class AsyncTeam:
         Аргументы:
             limit: Сотрудников на странице, от 1 до 200
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        return self._client._apaginate("/team", params={"limit": limit}, timeout=timeout)
+        return self._client._apaginate(
+            "/team",
+            params={"limit": limit},
+            timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
+        )
 
 
 
@@ -2737,10 +3373,12 @@ class Templates:
 
     def create(
         self,
-        *,
         body: CreateTemplateIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> TemplateOut:
         """Отправить шаблон на проверку
 
@@ -2757,9 +3395,11 @@ class Templates:
         POST /api/v2/external/templates
 
         Аргументы:
-            body: тело запроса, словарь CreateTemplateIn
+            body: тело запроса, словарь CreateTemplateIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TemplateOut",
@@ -2769,10 +3409,19 @@ class Templates:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    def delete(self, template_id: str, *, timeout: Optional[float] = None) -> None:
+    def delete(
+        self,
+        template_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> None:
         """Удалить шаблон
 
         Удаляет шаблон в Meta (только этот язык) и в Wazzapo. Отменить нельзя.
@@ -2785,11 +3434,26 @@ class Templates:
         Аргументы:
             template_id: id шаблона в Meta: template_id из POST или GET /api/v2/external/templates, например 1252715608684590
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        self._client._request("DELETE", f"/templates/{_quote(template_id)}", timeout=timeout)
+        self._client._request(
+            "DELETE",
+            f"/templates/{_quote(template_id)}",
+            timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
+        )
         return None
 
-    def get(self, template_id: str, *, timeout: Optional[float] = None) -> TemplateOut:
+    def get(
+        self,
+        template_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> TemplateOut:
         """Шаблон целиком
 
         Шаблон со всеми частями (components), числом переменных и кнопками; статус свежий из Meta.
@@ -2805,6 +3469,8 @@ class Templates:
         Аргументы:
             template_id: id шаблона в Meta: template_id из POST или GET /api/v2/external/templates, например 1252715608684590
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TemplateOut",
@@ -2812,10 +3478,19 @@ class Templates:
                 "GET",
                 f"/templates/{_quote(template_id)}",
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    def get_status(self, template_id: str, *, timeout: Optional[float] = None) -> TemplateOut:
+    def get_status(
+        self,
+        template_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> TemplateOut:
         """Статус шаблона
 
         Свежий статус проверки шаблона в Meta: PENDING, APPROVED, REJECTED, PAUSED или DISABLED.
@@ -2832,6 +3507,8 @@ class Templates:
         Аргументы:
             template_id: id шаблона в Meta: template_id из POST или GET /api/v2/external/templates, например 1252715608684590
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TemplateOut",
@@ -2839,6 +3516,8 @@ class Templates:
                 "GET",
                 f"/templates/{_quote(template_id)}/status",
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2853,6 +3532,8 @@ class Templates:
         name: Optional[str] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> TemplateListOut:
         """Список шаблонов
 
@@ -2860,7 +3541,8 @@ class Templates:
 
         Нужен, чтобы выбрать шаблон для messages.send: передайте его name и language, а значений переменных
         столько, сколько variables_count. Фильтры status, category, name, language можно сочетать.
-        Страницы курсором: next_cursor передайте в cursor. Ошибки: 404 номер не найден, 403 account_restricted.
+        Страницы курсором: next_cursor передайте в cursor. У каналов без шаблонов Meta (почта, OLX, Telegram)
+        список пустой. Ошибки: 404 номер не найден, 403 account_restricted.
 
         GET /api/v2/external/templates
 
@@ -2873,6 +3555,8 @@ class Templates:
             name: Часть имени без учёта регистра, например zapis
             language: Только этого языка, например ru или kk
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TemplateListOut",
@@ -2881,6 +3565,8 @@ class Templates:
                 "/templates",
                 params={"phone_number_id": phone_number_id, "limit": limit, "cursor": cursor, "status": status, "category": category, "name": name, "language": language},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2894,6 +3580,8 @@ class Templates:
         name: Optional[str] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> Iterator[TemplateOut]:
         """Список шаблонов: все страницы подряд.
 
@@ -2907,19 +3595,25 @@ class Templates:
             name: Часть имени без учёта регистра, например zapis
             language: Только этого языка, например ru или kk
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return self._client._paginate(
             "/templates",
             params={"phone_number_id": phone_number_id, "limit": limit, "status": status, "category": category, "name": name, "language": language},
             timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
         )
 
     def update(
         self,
         template_id: str,
-        *,
         body: UpdateTemplateIn,
+        *,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> TemplateOut:
         """Изменить шаблон
 
@@ -2935,8 +3629,10 @@ class Templates:
 
         Аргументы:
             template_id: id шаблона в Meta: template_id из POST или GET /api/v2/external/templates, например 1252715608684590
-            body: тело запроса, словарь UpdateTemplateIn
+            body: тело запроса, словарь UpdateTemplateIn (первым аргументом после id или body=)
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TemplateOut",
@@ -2945,6 +3641,8 @@ class Templates:
                 f"/templates/{_quote(template_id)}",
                 json=body,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -2958,10 +3656,12 @@ class AsyncTemplates:
 
     async def create(
         self,
-        *,
         body: CreateTemplateIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> TemplateOut:
         """Отправить шаблон на проверку
 
@@ -2978,9 +3678,11 @@ class AsyncTemplates:
         POST /api/v2/external/templates
 
         Аргументы:
-            body: тело запроса, словарь CreateTemplateIn
+            body: тело запроса, словарь CreateTemplateIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TemplateOut",
@@ -2990,10 +3692,19 @@ class AsyncTemplates:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    async def delete(self, template_id: str, *, timeout: Optional[float] = None) -> None:
+    async def delete(
+        self,
+        template_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> None:
         """Удалить шаблон
 
         Удаляет шаблон в Meta (только этот язык) и в Wazzapo. Отменить нельзя.
@@ -3006,11 +3717,26 @@ class AsyncTemplates:
         Аргументы:
             template_id: id шаблона в Meta: template_id из POST или GET /api/v2/external/templates, например 1252715608684590
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        await self._client._request("DELETE", f"/templates/{_quote(template_id)}", timeout=timeout)
+        await self._client._request(
+            "DELETE",
+            f"/templates/{_quote(template_id)}",
+            timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
+        )
         return None
 
-    async def get(self, template_id: str, *, timeout: Optional[float] = None) -> TemplateOut:
+    async def get(
+        self,
+        template_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> TemplateOut:
         """Шаблон целиком
 
         Шаблон со всеми частями (components), числом переменных и кнопками; статус свежий из Meta.
@@ -3026,6 +3752,8 @@ class AsyncTemplates:
         Аргументы:
             template_id: id шаблона в Meta: template_id из POST или GET /api/v2/external/templates, например 1252715608684590
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TemplateOut",
@@ -3033,10 +3761,19 @@ class AsyncTemplates:
                 "GET",
                 f"/templates/{_quote(template_id)}",
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    async def get_status(self, template_id: str, *, timeout: Optional[float] = None) -> TemplateOut:
+    async def get_status(
+        self,
+        template_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> TemplateOut:
         """Статус шаблона
 
         Свежий статус проверки шаблона в Meta: PENDING, APPROVED, REJECTED, PAUSED или DISABLED.
@@ -3053,6 +3790,8 @@ class AsyncTemplates:
         Аргументы:
             template_id: id шаблона в Meta: template_id из POST или GET /api/v2/external/templates, например 1252715608684590
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TemplateOut",
@@ -3060,6 +3799,8 @@ class AsyncTemplates:
                 "GET",
                 f"/templates/{_quote(template_id)}/status",
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -3074,6 +3815,8 @@ class AsyncTemplates:
         name: Optional[str] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> TemplateListOut:
         """Список шаблонов
 
@@ -3081,7 +3824,8 @@ class AsyncTemplates:
 
         Нужен, чтобы выбрать шаблон для messages.send: передайте его name и language, а значений переменных
         столько, сколько variables_count. Фильтры status, category, name, language можно сочетать.
-        Страницы курсором: next_cursor передайте в cursor. Ошибки: 404 номер не найден, 403 account_restricted.
+        Страницы курсором: next_cursor передайте в cursor. У каналов без шаблонов Meta (почта, OLX, Telegram)
+        список пустой. Ошибки: 404 номер не найден, 403 account_restricted.
 
         GET /api/v2/external/templates
 
@@ -3094,6 +3838,8 @@ class AsyncTemplates:
             name: Часть имени без учёта регистра, например zapis
             language: Только этого языка, например ru или kk
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TemplateListOut",
@@ -3102,6 +3848,8 @@ class AsyncTemplates:
                 "/templates",
                 params={"phone_number_id": phone_number_id, "limit": limit, "cursor": cursor, "status": status, "category": category, "name": name, "language": language},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -3115,6 +3863,8 @@ class AsyncTemplates:
         name: Optional[str] = None,
         language: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> AsyncIterator[TemplateOut]:
         """Список шаблонов: все страницы подряд.
 
@@ -3128,19 +3878,25 @@ class AsyncTemplates:
             name: Часть имени без учёта регистра, например zapis
             language: Только этого языка, например ru или kk
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return self._client._apaginate(
             "/templates",
             params={"phone_number_id": phone_number_id, "limit": limit, "status": status, "category": category, "name": name, "language": language},
             timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
         )
 
     async def update(
         self,
         template_id: str,
-        *,
         body: UpdateTemplateIn,
+        *,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> TemplateOut:
         """Изменить шаблон
 
@@ -3156,8 +3912,10 @@ class AsyncTemplates:
 
         Аргументы:
             template_id: id шаблона в Meta: template_id из POST или GET /api/v2/external/templates, например 1252715608684590
-            body: тело запроса, словарь UpdateTemplateIn
+            body: тело запроса, словарь UpdateTemplateIn (первым аргументом после id или body=)
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "TemplateOut",
@@ -3166,6 +3924,8 @@ class AsyncTemplates:
                 f"/templates/{_quote(template_id)}",
                 json=body,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -3183,6 +3943,8 @@ class WebhookEventTypes:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> WebhookEventTypeListOut:
         """Каталог событий
 
@@ -3199,6 +3961,8 @@ class WebhookEventTypes:
             limit: Сколько записей на странице
             cursor: next_cursor из прошлого ответа; без него первая страница
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookEventTypeListOut",
@@ -3207,6 +3971,8 @@ class WebhookEventTypes:
                 "/webhook-event-types",
                 params={"limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -3215,6 +3981,8 @@ class WebhookEventTypes:
         *,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> Iterator[WebhookEventTypeOut]:
         """Каталог событий: все страницы подряд.
 
@@ -3223,8 +3991,16 @@ class WebhookEventTypes:
         Аргументы:
             limit: Сколько записей на странице
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        return self._client._paginate("/webhook-event-types", params={"limit": limit}, timeout=timeout)
+        return self._client._paginate(
+            "/webhook-event-types",
+            params={"limit": limit},
+            timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
+        )
 
 
 
@@ -3240,6 +4016,8 @@ class AsyncWebhookEventTypes:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> WebhookEventTypeListOut:
         """Каталог событий
 
@@ -3256,6 +4034,8 @@ class AsyncWebhookEventTypes:
             limit: Сколько записей на странице
             cursor: next_cursor из прошлого ответа; без него первая страница
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookEventTypeListOut",
@@ -3264,6 +4044,8 @@ class AsyncWebhookEventTypes:
                 "/webhook-event-types",
                 params={"limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -3272,6 +4054,8 @@ class AsyncWebhookEventTypes:
         *,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> AsyncIterator[WebhookEventTypeOut]:
         """Каталог событий: все страницы подряд.
 
@@ -3280,8 +4064,16 @@ class AsyncWebhookEventTypes:
         Аргументы:
             limit: Сколько записей на странице
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        return self._client._apaginate("/webhook-event-types", params={"limit": limit}, timeout=timeout)
+        return self._client._apaginate(
+            "/webhook-event-types",
+            params={"limit": limit},
+            timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
+        )
 
 
 
@@ -3293,10 +4085,12 @@ class Webhooks:
 
     def create(
         self,
-        *,
         body: WebhookCreateIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> WebhookWithSecretOut:
         """Подписаться на события
 
@@ -3376,9 +4170,11 @@ class Webhooks:
         POST /api/v2/external/webhooks
 
         Аргументы:
-            body: тело запроса, словарь WebhookCreateIn
+            body: тело запроса, словарь WebhookCreateIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookWithSecretOut",
@@ -3388,10 +4184,19 @@ class Webhooks:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    def delete(self, webhook_id: str, *, timeout: Optional[float] = None) -> None:
+    def delete(
+        self,
+        webhook_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> None:
         """Удалить вебхук
 
         Удаляет вебхук вместе с историей доставок: события на адрес больше не приходят.
@@ -3404,11 +4209,26 @@ class Webhooks:
         Аргументы:
             webhook_id: id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        self._client._request("DELETE", f"/webhooks/{_quote(webhook_id)}", timeout=timeout)
+        self._client._request(
+            "DELETE",
+            f"/webhooks/{_quote(webhook_id)}",
+            timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
+        )
         return None
 
-    def get(self, webhook_id: str, *, timeout: Optional[float] = None) -> WebhookOut:
+    def get(
+        self,
+        webhook_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> WebhookOut:
         """Вебхук
 
         Один вебхук: адрес, события, включён ли и сколько доставок подряд не дошли. Без секрета.
@@ -3420,6 +4240,8 @@ class Webhooks:
         Аргументы:
             webhook_id: id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookOut",
@@ -3427,6 +4249,8 @@ class Webhooks:
                 "GET",
                 f"/webhooks/{_quote(webhook_id)}",
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -3436,6 +4260,8 @@ class Webhooks:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> WebhookListOut:
         """Список вебхуков
 
@@ -3450,6 +4276,8 @@ class Webhooks:
             limit: Сколько записей на странице
             cursor: next_cursor из прошлого ответа; без него первая страница
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookListOut",
@@ -3458,6 +4286,8 @@ class Webhooks:
                 "/webhooks",
                 params={"limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -3466,6 +4296,8 @@ class Webhooks:
         *,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> Iterator[WebhookOut]:
         """Список вебхуков: все страницы подряд.
 
@@ -3474,8 +4306,16 @@ class Webhooks:
         Аргументы:
             limit: Сколько записей на странице
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        return self._client._paginate("/webhooks", params={"limit": limit}, timeout=timeout)
+        return self._client._paginate(
+            "/webhooks",
+            params={"limit": limit},
+            timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
+        )
 
     def list_deliveries(
         self,
@@ -3484,6 +4324,8 @@ class Webhooks:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> WebhookDeliveryListOut:
         """История доставок
 
@@ -3500,6 +4342,8 @@ class Webhooks:
             limit: Сколько записей на странице
             cursor: next_cursor из прошлого ответа; без него первая страница
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookDeliveryListOut",
@@ -3508,6 +4352,8 @@ class Webhooks:
                 f"/webhooks/{_quote(webhook_id)}/deliveries",
                 params={"limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -3517,6 +4363,8 @@ class Webhooks:
         *,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> Iterator[WebhookDeliveryOut]:
         """История доставок: все страницы подряд.
 
@@ -3526,11 +4374,15 @@ class Webhooks:
             webhook_id: id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
             limit: Сколько записей на странице
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return self._client._paginate(
             f"/webhooks/{_quote(webhook_id)}/deliveries",
             params={"limit": limit},
             timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
         )
 
     def retry_delivery(
@@ -3540,6 +4392,8 @@ class Webhooks:
         *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> WebhookRetryOut:
         """Повторить доставку
 
@@ -3556,6 +4410,8 @@ class Webhooks:
             delivery_id: id доставки: поле id из GET /webhooks/{webhook_id}/deliveries или заголовок X-Wazzapo-Delivery-Id запроса, пришедшего на ваш адрес
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookRetryOut",
@@ -3564,6 +4420,8 @@ class Webhooks:
                 f"/webhooks/{_quote(webhook_id)}/deliveries/{_quote(delivery_id)}/retry",
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -3573,6 +4431,8 @@ class Webhooks:
         *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> WebhookSecretOut:
         """Сменить секрет подписи
 
@@ -3587,6 +4447,8 @@ class Webhooks:
             webhook_id: id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookSecretOut",
@@ -3595,6 +4457,8 @@ class Webhooks:
                 f"/webhooks/{_quote(webhook_id)}/rotate-secret",
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -3604,6 +4468,8 @@ class Webhooks:
         *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> WebhookTestOut:
         """Отправить тестовое событие
 
@@ -3618,6 +4484,8 @@ class Webhooks:
             webhook_id: id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookTestOut",
@@ -3626,15 +4494,19 @@ class Webhooks:
                 f"/webhooks/{_quote(webhook_id)}/test",
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
     def update(
         self,
         webhook_id: str,
-        *,
         body: WebhookUpdateIn,
+        *,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> WebhookOut:
         """Изменить вебхук
 
@@ -3648,8 +4520,10 @@ class Webhooks:
 
         Аргументы:
             webhook_id: id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
-            body: тело запроса, словарь WebhookUpdateIn
+            body: тело запроса, словарь WebhookUpdateIn (первым аргументом после id или body=)
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookOut",
@@ -3658,6 +4532,8 @@ class Webhooks:
                 f"/webhooks/{_quote(webhook_id)}",
                 json=body,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -3671,10 +4547,12 @@ class AsyncWebhooks:
 
     async def create(
         self,
-        *,
         body: WebhookCreateIn,
+        *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> WebhookWithSecretOut:
         """Подписаться на события
 
@@ -3754,9 +4632,11 @@ class AsyncWebhooks:
         POST /api/v2/external/webhooks
 
         Аргументы:
-            body: тело запроса, словарь WebhookCreateIn
+            body: тело запроса, словарь WebhookCreateIn (первым аргументом после id или body=)
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookWithSecretOut",
@@ -3766,10 +4646,19 @@ class AsyncWebhooks:
                 json=body,
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
-    async def delete(self, webhook_id: str, *, timeout: Optional[float] = None) -> None:
+    async def delete(
+        self,
+        webhook_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> None:
         """Удалить вебхук
 
         Удаляет вебхук вместе с историей доставок: события на адрес больше не приходят.
@@ -3782,11 +4671,26 @@ class AsyncWebhooks:
         Аргументы:
             webhook_id: id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        await self._client._request("DELETE", f"/webhooks/{_quote(webhook_id)}", timeout=timeout)
+        await self._client._request(
+            "DELETE",
+            f"/webhooks/{_quote(webhook_id)}",
+            timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
+        )
         return None
 
-    async def get(self, webhook_id: str, *, timeout: Optional[float] = None) -> WebhookOut:
+    async def get(
+        self,
+        webhook_id: str,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
+    ) -> WebhookOut:
         """Вебхук
 
         Один вебхук: адрес, события, включён ли и сколько доставок подряд не дошли. Без секрета.
@@ -3798,6 +4702,8 @@ class AsyncWebhooks:
         Аргументы:
             webhook_id: id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookOut",
@@ -3805,6 +4711,8 @@ class AsyncWebhooks:
                 "GET",
                 f"/webhooks/{_quote(webhook_id)}",
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -3814,6 +4722,8 @@ class AsyncWebhooks:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> WebhookListOut:
         """Список вебхуков
 
@@ -3828,6 +4738,8 @@ class AsyncWebhooks:
             limit: Сколько записей на странице
             cursor: next_cursor из прошлого ответа; без него первая страница
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookListOut",
@@ -3836,6 +4748,8 @@ class AsyncWebhooks:
                 "/webhooks",
                 params={"limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -3844,6 +4758,8 @@ class AsyncWebhooks:
         *,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> AsyncIterator[WebhookOut]:
         """Список вебхуков: все страницы подряд.
 
@@ -3852,8 +4768,16 @@ class AsyncWebhooks:
         Аргументы:
             limit: Сколько записей на странице
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
-        return self._client._apaginate("/webhooks", params={"limit": limit}, timeout=timeout)
+        return self._client._apaginate(
+            "/webhooks",
+            params={"limit": limit},
+            timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
+        )
 
     async def list_deliveries(
         self,
@@ -3862,6 +4786,8 @@ class AsyncWebhooks:
         limit: Optional[int] = None,
         cursor: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> WebhookDeliveryListOut:
         """История доставок
 
@@ -3878,6 +4804,8 @@ class AsyncWebhooks:
             limit: Сколько записей на странице
             cursor: next_cursor из прошлого ответа; без него первая страница
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookDeliveryListOut",
@@ -3886,6 +4814,8 @@ class AsyncWebhooks:
                 f"/webhooks/{_quote(webhook_id)}/deliveries",
                 params={"limit": limit, "cursor": cursor},
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -3895,6 +4825,8 @@ class AsyncWebhooks:
         *,
         limit: Optional[int] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> AsyncIterator[WebhookDeliveryOut]:
         """История доставок: все страницы подряд.
 
@@ -3904,11 +4836,15 @@ class AsyncWebhooks:
             webhook_id: id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
             limit: Сколько записей на странице
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return self._client._apaginate(
             f"/webhooks/{_quote(webhook_id)}/deliveries",
             params={"limit": limit},
             timeout=timeout,
+            headers=headers,
+            max_retries=max_retries,
         )
 
     async def retry_delivery(
@@ -3918,6 +4854,8 @@ class AsyncWebhooks:
         *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> WebhookRetryOut:
         """Повторить доставку
 
@@ -3934,6 +4872,8 @@ class AsyncWebhooks:
             delivery_id: id доставки: поле id из GET /webhooks/{webhook_id}/deliveries или заголовок X-Wazzapo-Delivery-Id запроса, пришедшего на ваш адрес
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookRetryOut",
@@ -3942,6 +4882,8 @@ class AsyncWebhooks:
                 f"/webhooks/{_quote(webhook_id)}/deliveries/{_quote(delivery_id)}/retry",
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -3951,6 +4893,8 @@ class AsyncWebhooks:
         *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> WebhookSecretOut:
         """Сменить секрет подписи
 
@@ -3965,6 +4909,8 @@ class AsyncWebhooks:
             webhook_id: id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookSecretOut",
@@ -3973,6 +4919,8 @@ class AsyncWebhooks:
                 f"/webhooks/{_quote(webhook_id)}/rotate-secret",
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
@@ -3982,6 +4930,8 @@ class AsyncWebhooks:
         *,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> WebhookTestOut:
         """Отправить тестовое событие
 
@@ -3996,6 +4946,8 @@ class AsyncWebhooks:
             webhook_id: id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
             idempotency_key: свой ключ повтора; без него SDK создаст новый на каждый вызов
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookTestOut",
@@ -4004,15 +4956,19 @@ class AsyncWebhooks:
                 f"/webhooks/{_quote(webhook_id)}/test",
                 idempotency_key=idempotency_key,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 
     async def update(
         self,
         webhook_id: str,
-        *,
         body: WebhookUpdateIn,
+        *,
         timeout: Optional[float] = None,
+        headers: Optional[Dict[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> WebhookOut:
         """Изменить вебхук
 
@@ -4026,8 +4982,10 @@ class AsyncWebhooks:
 
         Аргументы:
             webhook_id: id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
-            body: тело запроса, словарь WebhookUpdateIn
+            body: тело запроса, словарь WebhookUpdateIn (первым аргументом после id или body=)
             timeout: таймаут этого запроса в секундах
+            headers: свои заголовки этого запроса (X-Request-Id и т.п.); X-API-Key и Idempotency-Key не заменяют
+            max_retries: сколько раз повторить этот запрос на 429, 5xx и сбоях сети (по умолчанию как у клиента)
         """
         return cast(
             "WebhookOut",
@@ -4036,6 +4994,8 @@ class AsyncWebhooks:
                 f"/webhooks/{_quote(webhook_id)}",
                 json=body,
                 timeout=timeout,
+                headers=headers,
+                max_retries=max_retries,
             ),
         )
 

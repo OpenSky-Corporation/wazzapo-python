@@ -95,7 +95,7 @@ def test_get_has_no_idempotency_key() -> None:
 
 def test_retry_after_is_capped_and_backoff_grows() -> None:
     assert retry_delay(0, httpx.Response(429, headers={"Retry-After": "600"})) == 60.0
-    assert retry_delay(0, httpx.Response(429, headers={"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"})) <= 0.625
+    assert retry_delay(0, httpx.Response(429, headers={"Retry-After": "soon"})) <= 0.625
     assert 6.0 <= retry_delay(10, None) <= 10.0
 
 

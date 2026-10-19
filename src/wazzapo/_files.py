@@ -18,6 +18,9 @@ def _file_part(
     """Поле file формы multipart: (имя, содержимое, тип)."""
     if isinstance(file, (str, os.PathLike)):
         path = Path(file)
+        # Опечатка в пути: понятная ошибка до запроса, а не 422 от сервера
+        if not path.is_file():
+            raise FileNotFoundError(f"Файл для загрузки не найден: {path}")
         content = path.read_bytes()
         name = filename or path.name
     elif isinstance(file, (bytes, bytearray)):

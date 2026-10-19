@@ -748,7 +748,7 @@ class PhoneNumberListOut(_PhoneNumberListOutRequired, total=False):
 class _PhoneNumberOutRequired(TypedDict):
     #: id номера: передавайте его в phone_number_id при отправке сообщений, загрузке файлов и работе с шаблонами, например 123456789012345
     phone_number_id: str
-    #: Как подключён номер: meta_cloud (WhatsApp Cloud API) или evolution_api (старое подключение)
+    #: Как подключён канал: whatsapp_business (WhatsApp Cloud API), evolution_api (старое подключение WhatsApp), telegram, instagram, olx, satu, email, webchat
     provider_type: str
     #: connected: можно отправлять; pending и connecting: подключение не завершено; disconnected, failed: не работает
     status: Literal['pending', 'connecting', 'connected', 'disconnected', 'failed']
@@ -756,6 +756,8 @@ class _PhoneNumberOutRequired(TypedDict):
 
 class PhoneNumberOut(_PhoneNumberOutRequired, total=False):
     """Подключённый номер WhatsApp."""
+    #: Канал: whatsapp, telegram, instagram, olx, satu (чат Satu.kz), email (почтовый ящик), webchat (чат на сайте). Отправить сообщение через POST /messages/send и шаблоны можно только у whatsapp
+    channel: str
     #: Подтверждён ли номер кодом из SMS или звонка
     code_verification_status: Optional[Literal['VERIFIED', 'NOT_VERIFIED', 'EXPIRED']]
     #: Сам номер, как его видят клиенты, например +7 707 123 45 67
@@ -872,13 +874,15 @@ class RegisterPhoneNumberIn(_RegisterPhoneNumberInRequired, total=False):
 class _RegisterPhoneNumberOutRequired(TypedDict):
     #: id номера: передавайте его в phone_number_id при отправке сообщений, загрузке файлов и работе с шаблонами, например 123456789012345
     phone_number_id: str
-    #: Как подключён номер: meta_cloud (WhatsApp Cloud API) или evolution_api (старое подключение)
+    #: Как подключён канал: whatsapp_business (WhatsApp Cloud API), evolution_api (старое подключение WhatsApp), telegram, instagram, olx, satu, email, webchat
     provider_type: str
     #: connected: можно отправлять; pending и connecting: подключение не завершено; disconnected, failed: не работает
     status: Literal['pending', 'connecting', 'connected', 'disconnected', 'failed']
 
 
 class RegisterPhoneNumberOut(_RegisterPhoneNumberOutRequired, total=False):
+    #: Канал: whatsapp, telegram, instagram, olx, satu (чат Satu.kz), email (почтовый ящик), webchat (чат на сайте). Отправить сообщение через POST /messages/send и шаблоны можно только у whatsapp
+    channel: str
     #: Подтверждён ли номер кодом из SMS или звонка
     code_verification_status: Optional[Literal['VERIFIED', 'NOT_VERIFIED', 'EXPIRED']]
     #: Сам номер, как его видят клиенты, например +7 707 123 45 67

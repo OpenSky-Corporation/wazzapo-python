@@ -5,7 +5,48 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Mapping, Optional, Type
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
+from typing import Any, Dict, List, Mapping, Optional, Type
+
+# Код по HTTP-статусу, когда ответ не в формате API (страница прокси): та же таблица, что в backend
+STATUS_CODES: Dict[int, str] = {
+    400: "BAD_REQUEST",
+    401: "UNAUTHORIZED",
+    403: "FORBIDDEN",
+    404: "NOT_FOUND",
+    405: "METHOD_NOT_ALLOWED",
+    409: "CONFLICT",
+    413: "PAYLOAD_TOO_LARGE",
+    415: "UNSUPPORTED_MEDIA_TYPE",
+    422: "VALIDATION_ERROR",
+    429: "RATE_LIMITED",
+    500: "INTERNAL_ERROR",
+    501: "NOT_IMPLEMENTED",
+    502: "BAD_GATEWAY",
+    503: "SERVICE_UNAVAILABLE",
+    504: "GATEWAY_TIMEOUT",
+}
+CONNECTION_ERROR = "CONNECTION_ERROR"
+TIMEOUT = "TIMEOUT"
+
+
+def parse_retry_after(value: Optional[str]) -> Optional[float]:
+    """Retry-After: секунды (30) или дата HTTP (Wed, 21 Oct 2026 07:28:00 GMT) → секунды от сейчас."""
+    if value is None or not value.strip():
+        return None
+    text = value.strip()
+    try:
+        return max(float(text), 0.0)
+    except ValueError:
+        pass
+    try:
+        when = parsedate_to_datetime(text)
+    except (TypeError, ValueError, IndexError):
+        return None
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    return max((when - datetime.now(timezone.utc)).total_seconds(), 0.0)
 
 
 class WazzapoError(Exception):
@@ -86,7 +127,18 @@ class UnprocessableEntityError(WazzapoError):
 
 
 class ValidationError(UnprocessableEntityError):
-    """422 VALIDATION_ERROR: поля не прошли проверку, список в details (field, message)."""
+    """422 VALIDATION_ERROR: поля не прошли проверку; fields: список {"field", "message"}."""
+
+    @property
+    def fields(self) -> List[Dict[str, str]]:
+        """Поля, не прошедшие проверку: [{"field": "body.to", "message": "Field required"}]."""
+        if not isinstance(self.details, list):
+            return []
+        return [
+            {"field": str(item.get("field", "")), "message": str(item.get("message", ""))}
+            for item in self.details
+            if isinstance(item, dict)
+        ]
 
 
 class OutsideWindowError(UnprocessableEntityError):
@@ -102,22 +154,26 @@ class RateLimitError(WazzapoError):
 
     @property
     def retry_after(self) -> Optional[float]:
-        value = {k.lower(): v for k, v in self.headers.items()}.get("retry-after")
-        try:
-            return float(value) if value is not None else None
-        except ValueError:
-            return None
+        return parse_retry_after({k.lower(): v for k, v in self.headers.items()}.get("retry-after"))
 
 
 class ServerError(WazzapoError):
     """5xx: сбой Wazzapo или WhatsApp (Meta). SDK уже повторил запрос."""
 
 
-class WebhookSignatureError(ValueError):
-    """Подпись вебхука не сошлась или метка времени слишком старая."""
+class PaginationError(WazzapoError):
+    """Сервер вернул тот же next_cursor ещё раз: обход списка остановлен, чтобы не крутиться вечно."""
 
 
-ConnectionError = APIConnectionError  # noqa: A001 (имя из описания SDK: wazzapo.errors.ConnectionError)
+class WebhookVerificationError(WazzapoError, ValueError):
+    """Вебхук не прошёл проверку: нет секрета, нет подписи, подпись чужая, запрос старый или тело не JSON."""
+
+
+WebhookSignatureError = WebhookVerificationError  # старое имя, оставлено для совместимости
+
+# Имена из описания SDK (wazzapo.errors.ConnectionError). В __all__ их нет: from wazzapo.errors import *
+# не подменит встроенные ConnectionError и TimeoutError
+ConnectionError = APIConnectionError  # noqa: A001
 TimeoutError = APITimeoutError  # noqa: A001
 
 _BY_STATUS: Dict[int, Type[WazzapoError]] = {
@@ -169,6 +225,7 @@ def from_response(status: int, body: Any, headers: Mapping[str, str]) -> Wazzapo
         message = body.strip()[:500]
     lower = {k.lower(): v for k, v in headers.items()}
     request_id = request_id or lower.get("x-request-id")
+    code = code or STATUS_CODES.get(status)
     cls = error_class(status, code)
     return cls(message, status=status, code=code, details=details, request_id=request_id, headers=headers)
 
@@ -178,21 +235,25 @@ __all__ = [
     "APITimeoutError",
     "AuthenticationError",
     "BadRequestError",
+    "CONNECTION_ERROR",
     "ConflictError",
-    "ConnectionError",
     "NotFoundError",
     "OutsideWindowError",
     "PaymentRequiredError",
     "PermissionDeniedError",
+    "PaginationError",
     "RateLimitError",
+    "STATUS_CODES",
     "ServerError",
+    "TIMEOUT",
     "TemplateError",
-    "TimeoutError",
     "UnprocessableEntityError",
     "UsageLimitError",
     "ValidationError",
     "WazzapoError",
     "WebhookSignatureError",
+    "WebhookVerificationError",
     "error_class",
     "from_response",
+    "parse_retry_after",
 ]

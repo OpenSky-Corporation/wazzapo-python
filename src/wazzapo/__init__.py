@@ -2,7 +2,7 @@
 
     from wazzapo import Wazzapo
     client = Wazzapo()  # ключ из WAZZAPO_API_KEY
-    client.messages.send(body={"phone_number_id": "...", "to": "77071234567", "type": "text", "text": {"body": "Привет"}})
+    client.messages.send({"phone_number_id": "...", "to": "77071234567", "type": "text", "text": {"body": "Привет"}})
 """
 
 from . import errors, types, webhooks
@@ -17,6 +17,7 @@ from .errors import (
     ConflictError,
     NotFoundError,
     OutsideWindowError,
+    PaginationError,
     PaymentRequiredError,
     PermissionDeniedError,
     RateLimitError,
@@ -27,6 +28,7 @@ from .errors import (
     ValidationError,
     WazzapoError,
     WebhookSignatureError,
+    WebhookVerificationError,
 )
 
 __all__ = [
@@ -39,6 +41,7 @@ __all__ = [
     "ConflictError",
     "NotFoundError",
     "OutsideWindowError",
+    "PaginationError",
     "PaymentRequiredError",
     "PermissionDeniedError",
     "RateLimitError",
@@ -50,6 +53,7 @@ __all__ = [
     "Wazzapo",
     "WazzapoError",
     "WebhookSignatureError",
+    "WebhookVerificationError",
     "__version__",
     "errors",
     "types",

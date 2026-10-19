@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, AsyncIterator, Dict, Iterator, Mapping, Optional
+from typing import Any, AsyncIterator, Dict, Iterator, Mapping, Optional, Set
 
 import httpx
 
@@ -17,8 +17,9 @@ class _Base:
     _settings: _http.Settings
 
     @property
-    def api_key(self) -> str:
-        return self._settings.api_key
+    def api_key_hint(self) -> str:
+        """Ключ для логов: первые 8 знаков (wz_live_…). Сам ключ наружу не отдаётся."""
+        return self._settings.key_hint
 
     @property
     def base_url(self) -> str:
@@ -30,7 +31,7 @@ class _Base:
         return self._settings.is_test
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}(api_key={_http.mask_key(self.api_key)!r}, base_url={self.base_url!r})"
+        return f"{type(self).__name__}(api_key={self.api_key_hint!r}, base_url={self.base_url!r})"
 
     def _url(self, path: str) -> str:
         return self._settings.base_url + _http.API_PREFIX + path
@@ -81,12 +82,15 @@ class Wazzapo(_Base, SyncResources):
         files: Optional[Dict[str, Any]] = None,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        max_retries: Optional[int] = None,
         raw: bool = False,
     ) -> Any:
-        headers = self._settings.headers(method, idempotency_key)
+        request_headers = self._settings.headers(method, idempotency_key, headers)
         query = _http.clean_params(params)
-        for attempt in range(self._settings.max_retries + 1):
-            last = attempt == self._settings.max_retries
+        retries = self._settings.retries(max_retries)
+        for attempt in range(retries + 1):
+            last = attempt == retries
             _http.log_request(self._settings, method, path, attempt)
             try:
                 response = self._http.request(
@@ -95,7 +99,7 @@ class Wazzapo(_Base, SyncResources):
                     params=query,
                     json=json,
                     files=files,
-                    headers=headers,
+                    headers=request_headers,
                     timeout=self._settings.timeout if timeout is None else timeout,
                 )
             except httpx.TransportError as exc:
@@ -110,16 +114,23 @@ class Wazzapo(_Base, SyncResources):
         raise AssertionError("недостижимо")  # pragma: no cover
 
     def _paginate(
-        self, path: str, params: Optional[Mapping[str, Any]] = None, *, timeout: Optional[float] = None
+        self,
+        path: str,
+        params: Optional[Mapping[str, Any]] = None,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> Iterator[Any]:
         query = dict(params or {})
+        seen: Set[str] = set()
         while True:
-            page = self._request("GET", path, params=query, timeout=timeout)
+            page = self._request(
+                "GET", path, params=query, timeout=timeout, headers=headers, max_retries=max_retries
+            )
             yield from page.get("data") or []
-            cursor = page.get("next_cursor")
-            if not page.get("has_more") or not cursor:
+            if _http.next_cursor(page, query, seen) is None:
                 return
-            query["cursor"] = cursor
 
 
 class AsyncWazzapo(_Base, AsyncResources):
@@ -166,12 +177,15 @@ class AsyncWazzapo(_Base, AsyncResources):
         files: Optional[Dict[str, Any]] = None,
         idempotency_key: Optional[str] = None,
         timeout: Optional[float] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        max_retries: Optional[int] = None,
         raw: bool = False,
     ) -> Any:
-        headers = self._settings.headers(method, idempotency_key)
+        request_headers = self._settings.headers(method, idempotency_key, headers)
         query = _http.clean_params(params)
-        for attempt in range(self._settings.max_retries + 1):
-            last = attempt == self._settings.max_retries
+        retries = self._settings.retries(max_retries)
+        for attempt in range(retries + 1):
+            last = attempt == retries
             _http.log_request(self._settings, method, path, attempt)
             try:
                 response = await self._http.request(
@@ -180,7 +194,7 @@ class AsyncWazzapo(_Base, AsyncResources):
                     params=query,
                     json=json,
                     files=files,
-                    headers=headers,
+                    headers=request_headers,
                     timeout=self._settings.timeout if timeout is None else timeout,
                 )
             except httpx.TransportError as exc:
@@ -195,14 +209,21 @@ class AsyncWazzapo(_Base, AsyncResources):
         raise AssertionError("недостижимо")  # pragma: no cover
 
     async def _apaginate(
-        self, path: str, params: Optional[Mapping[str, Any]] = None, *, timeout: Optional[float] = None
+        self,
+        path: str,
+        params: Optional[Mapping[str, Any]] = None,
+        *,
+        timeout: Optional[float] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        max_retries: Optional[int] = None,
     ) -> AsyncIterator[Any]:
         query = dict(params or {})
+        seen: Set[str] = set()
         while True:
-            page = await self._request("GET", path, params=query, timeout=timeout)
+            page = await self._request(
+                "GET", path, params=query, timeout=timeout, headers=headers, max_retries=max_retries
+            )
             for item in page.get("data") or []:
                 yield item
-            cursor = page.get("next_cursor")
-            if not page.get("has_more") or not cursor:
+            if _http.next_cursor(page, query, seen) is None:
                 return
-            query["cursor"] = cursor
