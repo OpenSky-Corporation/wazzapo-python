@@ -1,0 +1,18 @@
+# Выпуск: тег v0.1.0 → PyPI wazzapo через Trusted Publishing, без токенов
+name: Publish
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run --with pytest --with pytest-asyncio --with-editable . pytest -q
+      - run: test "v$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)" = "$GITHUB_REF_NAME"
+      - run: uv build
+      - uses: pypa/gh-action-pypi-publish@release/v1

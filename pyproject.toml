@@ -26,6 +26,8 @@ dependencies = ["httpx>=0.23,<1"]
 dev = ["pytest>=7", "pytest-asyncio>=0.21", "mypy>=1.8"]
 
 [project.urls]
+Source = "https://github.com/OpenSky-Corporation/wazzapo-python"
+Issues = "https://github.com/OpenSky-Corporation/wazzapo-python/issues"
 Homepage = "https://wazzapo.kz"
 Documentation = "https://wazzapo.kz/api/v2/external/docs"
 
