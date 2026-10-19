@@ -32,12 +32,9 @@ from wazzapo import Wazzapo
 
 client = Wazzapo()  # ключ из WAZZAPO_API_KEY, можно передать Wazzapo(api_key="...")
 
-# В списке все каналы аккаунта (WhatsApp, Telegram, OLX, почта...): берём подключённый WhatsApp
-numbers = client.phone_numbers.list()["data"]
-whatsapp = next(
-    n for n in numbers
-    if n["provider_type"] in ("meta_cloud", "evolution_api") and n["status"] == "connected"
-)
+# Только номера WhatsApp (без фильтра в списке все каналы: Telegram, OLX, почта...)
+numbers = client.phone_numbers.list(channel="whatsapp")["data"]
+whatsapp = next(n for n in numbers if n["status"] == "connected")
 phone_number_id = whatsapp["phone_number_id"]
 
 # Текст доходит, только если клиент писал вам за последние 24 часа
