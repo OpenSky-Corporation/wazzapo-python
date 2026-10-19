@@ -231,6 +231,16 @@ if already_processed(delivery_id):  # ваша проверка: таблица,
 
 Для своих тестов подпись ставит `webhooks.sign(body, secret)`, а `webhooks.verify(..., now=...)` проверяет на заданное время.
 
+## Примеры
+
+Готовые примеры без фреймворков в папке [examples](https://github.com/OpenSky-Corporation/wazzapo-python/tree/main/examples):
+
+- [bot_buttons.py](https://github.com/OpenSky-Corporation/wazzapo-python/tree/main/examples/bot_buttons.py): бот с кнопками отвечает на входящее сообщение и на нажатие кнопки;
+- [lead_to_deal.py](https://github.com/OpenSky-Corporation/wazzapo-python/tree/main/examples/lead_to_deal.py): заявка с формы сайта становится сделкой без дублей, клиент получает приветственный шаблон;
+- [webhooks_receiver.py](https://github.com/OpenSky-Corporation/wazzapo-python/tree/main/examples/webhooks_receiver.py): приёмник всех событий с проверкой подписи.
+
+Там же описано, как проверить их на тестовом ключе и подписанным тестовым событием.
+
 ## Тестовый ключ
 
 Ключ `wz_test_…` проходит все проверки, но ничего не отправляет в WhatsApp и не меняет данные: сообщения получают id `wamid.SANDBOX…`. Чтение работает по-настоящему. `client.is_test` показывает, какой ключ в работе.
