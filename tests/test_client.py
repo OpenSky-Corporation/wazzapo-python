@@ -15,7 +15,7 @@ from wazzapo import errors
 from wazzapo._http import USER_AGENT, retry_delay
 
 KEY = "wz_live_0123456789abcdef"
-SPEC = json.loads((Path(__file__).resolve().parents[2] / "openapi.json").read_text(encoding="utf-8"))
+SPEC = json.loads((Path(__file__).resolve().parent / "openapi.json").read_text(encoding="utf-8"))
 SEND = {"phone_number_id": "123", "to": "77071234567", "type": "text", "text": {"body": "Привет"}}
 
 Handler = Callable[[httpx.Request], httpx.Response]
