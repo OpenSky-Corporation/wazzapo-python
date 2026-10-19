@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wazzapo"
+version = "0.1.0"
+description = "Официальный Python SDK для API v2 Wazzapo: WhatsApp, контакты, сделки, вебхуки"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
+authors = [{ name = "TOO OPENSKY CORPORATION", email = "info@wazzapo.kz" }]
+keywords = ["wazzapo", "whatsapp", "whatsapp-business", "cloud-api", "crm", "sdk"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Typing :: Typed",
+]
+dependencies = ["httpx>=0.23,<1"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "pytest-asyncio>=0.21", "mypy>=1.8"]
+
+[project.urls]
+Homepage = "https://wazzapo.kz"
+Documentation = "https://wazzapo.kz/api/v2/external/docs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wazzapo"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+strict = true
+python_version = "3.9"
